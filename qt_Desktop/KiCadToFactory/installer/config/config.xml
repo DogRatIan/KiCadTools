@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Installer>
+    <Name>KiCadToFactory</Name>
+    <Version>1.00.00</Version>
+    <Title>KiCadToFactory win32 Installer</Title>
+    <Publisher>DogRatIan</Publisher>
+    <StartMenuDir>DogRatIan/KiCadToFactory</StartMenuDir>
+    <TargetDir>@ApplicationsDirX86@/KiCadToFactory</TargetDir>
+</Installer>
