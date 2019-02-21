@@ -52,6 +52,7 @@ struct TPartInfo {
     int padCount;
     bool foundInDb;
     bool isStandardStock;
+    unsigned char padding[2];
 };
 
 
@@ -72,8 +73,8 @@ struct TPartInfo {
 //==========================================================================
 CKiCadConverter::CKiCadConverter (QObject *aParent) :
     QObject(aParent) {
-    currentPositionFilename = "SLC_PCB_Factory_SMT.csv";
-    currentBomFilename = "SLC_PCB_Factory_BOM.csv";
+    currentPositionFilename = "JLC_PCB_Factory_SMT.csv";
+    currentBomFilename = "JLC_PCB_Factory_BOM.csv";
 }
 
 //==========================================================================
@@ -399,6 +400,10 @@ int CKiCadConverter::convPositionForJlc (QFile *aInputFile, int aInputLineCount,
 
     aInputFile->seek(0);
     while (aInputFile->readLine (line_buf, sizeof (line_buf)) >= 0) {
+        //
+        if ((line_count % 4) == 0) {
+            QCoreApplication::processEvents();
+        }
         line_count ++;
 
         // Skip first line
@@ -471,6 +476,11 @@ int CKiCadConverter::convBomForJlc (QFile *aInputFile, int aInputLineCount, QFil
 
     aInputFile->seek(0);
     while (aInputFile->readLine (line_buf, sizeof (line_buf)) >= 0) {
+
+        //
+        if ((line_count % 4) == 0) {
+            QCoreApplication::processEvents();
+        }
         line_count ++;
 
         // Skip first line
@@ -659,7 +669,26 @@ int CKiCadConverter::lookupFormPartList (struct TPartInfo *aPartInfo) {
 void CKiCadConverter::lookupCapacitor (struct TPartInfo *aPartInfo, QString aSearchType) {
     QString sql;
     QString str_value = aPartInfo->value;
+    int idx;
     str_value.replace ("F", "");    // Remove unit
+
+    // Remove tailing stuff after ±
+    idx = str_value.indexOf ("±");
+    DEBUG_PRINTF ("n at %d", idx);
+    if (idx > 0)
+        str_value.remove (idx, str_value.length());
+
+    // Remove tailing stuff after +/-
+    idx = str_value.indexOf ("+/-");
+    DEBUG_PRINTF ("n at %d", idx);
+    if (idx > 0)
+        str_value.remove (idx, str_value.length());
+
+    // Remove tailing stuff after space
+    idx = str_value.indexOf (' ');
+    if (idx > 0)
+        str_value.remove (idx, str_value.length());
+
 
     // Correct uF, nF, pF
     if (str_value.endsWith('u')) {
@@ -732,10 +761,28 @@ void CKiCadConverter::lookupCapacitor (struct TPartInfo *aPartInfo, QString aSea
 void CKiCadConverter::lookupResister (struct TPartInfo *aPartInfo, QString aSearchType) {
     QString sql;
     QString str_value = aPartInfo->value;
+    int idx;
 
     // Remove unit
     str_value.replace ("OHM", "", Qt::CaseInsensitive);
     str_value.replace ("Ω", "");
+
+    // Remove tailing stuff after ±
+    idx = str_value.indexOf ("±");
+    DEBUG_PRINTF ("n at %d", idx);
+    if (idx > 0)
+        str_value.remove (idx, str_value.length());
+
+    // Remove tailing stuff after +/-
+    idx = str_value.indexOf ("+/-");
+    DEBUG_PRINTF ("n at %d", idx);
+    if (idx > 0)
+        str_value.remove (idx, str_value.length());
+
+    // Remove tailing stuff after space
+    idx = str_value.indexOf (' ');
+    if (idx > 0)
+        str_value.remove (idx, str_value.length());
 
     // Correct nR, nRn
     str_value.replace ("R", ".");

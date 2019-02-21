@@ -222,16 +222,20 @@ Page {
                         return;
                     }
 
+                    rootApp.showBusy (true);
                     if (selectedPositionFile.filename.length > 0) {
                         if (!itemConverter.convertPositionFile (position_file_path)) {
+                            rootApp.showBusy (false);
                             return;
                         }
                     }
                     if (selectedBomFile.filename.length > 0) {
                         if (!itemConverter.convertBomFile (bom_file_path)) {
+                            rootApp.showBusy (false);
                             return;
                         }
                     }
+                    rootApp.showBusy (false);
                     rootApp.showSystemMessage ("INFO", "Conversion success.");
                 }
             }
