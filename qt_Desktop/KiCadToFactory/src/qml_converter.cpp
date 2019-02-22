@@ -435,13 +435,21 @@ int CKiCadConverter::convPositionForJlc (QFile *aInputFile, int aInputLineCount,
             str_side = "B";
         }
 
-        auto str_comment = determinePartType (str_ref, str_value, str_package);
-        str_comment.append (" ");
-        str_comment.append (str_value.mid (0, 10));
+        auto str_type = determinePartType (str_ref, str_value, str_package);
+        auto str_comment = QString ("%1 %2").arg (str_type).arg (str_value.mid (0, 10));
 
         str_package = determinePackage (str_package);
 
-        pos_y *= -1;
+        // Correct rotation for some type of parts
+        if (str_type.compare ("TCAP") == 0) {
+            rotation += 180;
+        }
+        if (str_type.compare ("TRX") == 0) {
+            rotation += 90;
+        }
+
+        if (rotation >= 360)
+            rotation -= 360;
 
         // Write output
         str_output = QString ("%1,%2,%3mm,%4mm,,,,,%5,%6,%7")
@@ -565,6 +573,13 @@ QString CKiCadConverter::determinePartType (QString aRef, QString aValue, QStrin
     if (aRef.startsWith ("J")) {
         return "CON";
     }
+    if (aRef.startsWith ("Q")) {
+        return "TRX";
+    }
+
+    if ((aRef.startsWith ("D")) && (aPackage.contains("LED"))) {
+        return "LED";
+    }
 
     if ((aValue.contains("MHz")) || (aValue.contains("kHz"))) {
         return "XTAL";
@@ -650,6 +665,12 @@ int CKiCadConverter::lookupFormPartList (struct TPartInfo *aPartInfo) {
         else if (aPartInfo->type.compare ("XTAL") == 0) {
             lookupGeneral (aPartInfo, "贴片无源晶振");
         }
+        else if (aPartInfo->type.compare ("TRX") == 0) {
+            lookupGeneral (aPartInfo, "三极管");
+        }
+        else if (aPartInfo->type.compare ("LED") == 0) {
+            lookupLed (aPartInfo, "发光二极管");
+        }
     }
     catch (std::exception& aError) {
         emit message (QString ("Lookup part list error. %1").arg (aError.what()));
@@ -680,7 +701,6 @@ void CKiCadConverter::lookupCapacitor (struct TPartInfo *aPartInfo, QString aSea
 
     // Remove tailing stuff after +/-
     idx = str_value.indexOf ("+/-");
-    DEBUG_PRINTF ("n at %d", idx);
     if (idx > 0)
         str_value.remove (idx, str_value.length());
 
@@ -775,7 +795,6 @@ void CKiCadConverter::lookupResister (struct TPartInfo *aPartInfo, QString aSear
 
     // Remove tailing stuff after +/-
     idx = str_value.indexOf ("+/-");
-    DEBUG_PRINTF ("n at %d", idx);
     if (idx > 0)
         str_value.remove (idx, str_value.length());
 
@@ -788,6 +807,12 @@ void CKiCadConverter::lookupResister (struct TPartInfo *aPartInfo, QString aSear
     str_value.replace ("R", ".");
     if (str_value.endsWith ("."))
         str_value.chop(1);
+
+    // Correct nkn
+    if ((str_value.at(1) == 'k') || (str_value.at(1) == 'K')) {
+        str_value.replace ("k", ".");
+        str_value.append ("k");
+    }
 
     // Add unit
     str_value.append ("Ω");
@@ -867,6 +892,57 @@ void CKiCadConverter::lookupInductor (struct TPartInfo *aPartInfo, QString aSear
         DEBUG_PRINTF ("Part found.");
     }
 }
+
+//==========================================================================
+// Lookup LED
+//==========================================================================
+void CKiCadConverter::lookupLed (struct TPartInfo *aPartInfo, QString aSearchType) {
+    QString sql;
+    QString str_value = aPartInfo->value;
+
+    // Determine color
+    if ((str_value.contains("BLUE")) || (str_value.contains("BLE"))) {
+        str_value = "蓝";
+    }
+    if ((str_value.contains("GREEN")) || (str_value.contains("GRN"))) {
+        str_value = "绿";
+    }
+    if (str_value.contains("RED")) {
+        str_value = "红";
+    }
+
+    //
+    sql = QString ("SELECT partNumber,name,type,package,padCount,isStanardStock FROM partList"
+                   " WHERE name LIKE '%1%' AND package='%2' AND type LIKE '%%3%'"
+                   " ORDER BY isStanardStock DESC;")
+                    .arg(str_value).arg(aPartInfo->package).arg(aSearchType);
+    DEBUG_PRINTF ("SQL:%s", sql.toUtf8().data());
+    sqlite3pp::query qry (dbPartList, sql.toUtf8().data());
+
+    auto row = qry.begin();
+    if (row != qry.end()) {
+
+        auto part_number = (*row).get<char const*>(0);
+        auto name = (*row).get<std::string>(1);
+        auto type = (*row).get<char const*>(2);
+//        auto package = (*row).get<char const*>(3);
+        auto pad_count = (*row).get<int>(4);
+        auto is_standard = (*row).get<int>(5);
+
+        aPartInfo->foundInDb = true;
+        aPartInfo->partNumber = part_number;
+        aPartInfo->name = name.c_str();
+        aPartInfo->type = type;
+        aPartInfo->padCount = pad_count;
+        if (is_standard)
+            aPartInfo->isStandardStock = true;
+        else
+            aPartInfo->isStandardStock = false;
+
+        DEBUG_PRINTF ("Part found.");
+    }
+}
+
 
 //==========================================================================
 // Lookup General parts

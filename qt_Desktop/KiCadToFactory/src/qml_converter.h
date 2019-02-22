@@ -90,6 +90,7 @@ private:
     void lookupCapacitor (struct TPartInfo *aPartInfo, QString aSearchType);
     void lookupResister (struct TPartInfo *aPartInfo, QString aSearchType);
     void lookupInductor (struct TPartInfo *aPartInfo, QString aSearchType);
+    void lookupLed (struct TPartInfo *aPartInfo, QString aSearchType);
     void lookupGeneral (struct TPartInfo *aPartInfo, QString aSearchType);
 };
 
