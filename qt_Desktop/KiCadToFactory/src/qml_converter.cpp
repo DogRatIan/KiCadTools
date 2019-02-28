@@ -444,8 +444,13 @@ int CKiCadConverter::convPositionForJlc (QFile *aInputFile, int aInputLineCount,
         if (str_type.compare ("TCAP") == 0) {
             rotation += 180;
         }
-        if (str_type.compare ("TRX") == 0) {
-            rotation += 90;
+        if (str_side.compare("B") == 0) {
+            if ((str_type.compare ("TRX") == 0) ||  (str_type.compare ("MOSFET") == 0)) {
+                rotation += 90;
+            }
+        }
+        if (str_type.compare ("RESxN") == 0) {
+            rotation += 270;
         }
 
         if (rotation >= 360)
@@ -543,7 +548,7 @@ int CKiCadConverter::convBomForJlc (QFile *aInputFile, int aInputLineCount, QFil
         }
 
         // Write output
-        str_output = QString ("%1,%2,\"%3\",%4,%5,%6,%7,%8")
+        str_output = QString ("%1,%2,\"%3\",\"%4\",%5,%6,%7,%8")
                         .arg (str_comment).arg(str_type).arg(str_ref).arg(str_package)
                         .arg(str_lib_ref).arg(str_pad_count).arg(quantity).arg(str_part_number);
         str_output.append (STRING_LINE_FEED);
@@ -558,6 +563,11 @@ int CKiCadConverter::convBomForJlc (QFile *aInputFile, int aInputLineCount, QFil
 // Determine part type
 //==========================================================================
 QString CKiCadConverter::determinePartType (QString aRef, QString aValue, QString aPackage) {
+
+    if (aRef.startsWith ("RN")) {
+        return "RESxN";
+    }
+
     if (aRef.startsWith ("C")) {
         if (aPackage.startsWith("CP_EIA-"))
             return "TCAP";
@@ -574,11 +584,17 @@ QString CKiCadConverter::determinePartType (QString aRef, QString aValue, QStrin
         return "CON";
     }
     if (aRef.startsWith ("Q")) {
+        if (aValue.startsWith ("IRLM"))
+            return "MOSFET";
+
         return "TRX";
     }
 
-    if ((aRef.startsWith ("D")) && (aPackage.contains("LED"))) {
-        return "LED";
+    if (aRef.startsWith ("D")) {
+        if (aPackage.contains("LED"))
+            return "LED";
+        else
+            return "DIODE";
     }
 
     if ((aValue.contains("MHz")) || (aValue.contains("kHz"))) {
@@ -670,6 +686,15 @@ int CKiCadConverter::lookupFormPartList (struct TPartInfo *aPartInfo) {
         }
         else if (aPartInfo->type.compare ("LED") == 0) {
             lookupLed (aPartInfo, "发光二极管");
+        }
+        else if (aPartInfo->type.compare ("DIODE") == 0) {
+            lookupGeneral (aPartInfo, "二极管");
+        }
+        else if (aPartInfo->type.compare ("MOSFET") == 0) {
+            lookupGeneral (aPartInfo, "场效应管");
+        }
+        else if (aPartInfo->type.compare ("RESxN") == 0) {
+            lookupResister (aPartInfo, "贴片排阻");
         }
     }
     catch (std::exception& aError) {
@@ -809,7 +834,7 @@ void CKiCadConverter::lookupResister (struct TPartInfo *aPartInfo, QString aSear
         str_value.chop(1);
 
     // Correct nkn
-    if ((str_value.at(1) == 'k') || (str_value.at(1) == 'K')) {
+    if (((str_value.at(1) == 'k') || (str_value.at(1) == 'K')) && (str_value.length() > 2)) {
         str_value.replace ("k", ".");
         str_value.append ("k");
     }
