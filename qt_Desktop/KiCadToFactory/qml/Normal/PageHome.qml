@@ -15,17 +15,75 @@ Page {
     property var selectedBomFile: {"path": "", "filename": ""}
     property string selectedDestPath: ""
     property string selectedDestPathTrimmed: ""
+    property bool selectedJlc: true
 
     //==========================================================================
     // Functions
     //==========================================================================
+    function clearSelection () {
+        rootPage.selectedPositionFile = {"path": "", "filename": ""};
+        rootPage.selectedBomFile = {"path": "", "filename": ""};
+        rootPage.selectedDestPath = "";
+        rootPage.selectedDestPathTrimmed = "";
+    }
+
     function updateDatabaseStatus () {
         if (itemPartList.isReady) {
-            labelDatabaseStatus.text = "Ready";
+            labelDatabaseStatus.text = "Ready (" + itemPartList.rowCount + " parts)";
         }
         else {
             labelDatabaseStatus.text = "Not connected";
         }
+    }
+
+    function updateDestPath (aPath) {
+        rootPage.selectedDestPath = aPath;
+        if (aPath.length > 40) {
+            rootPage.selectedDestPathTrimmed = "..." + aPath.substring (aPath.length - 40, aPath.length);
+        }
+        else {
+            rootPage.selectedDestPathTrimmed = aPath
+        }
+    }
+
+    function doConversion () {
+        if (!itemPartList.isReady) {
+            rootApp.showSystemMessage ("ERROR", "Database not ready.");
+            return;
+        }
+
+        if (rootPage.selectedJlc == false) {
+            rootApp.showSystemMessage ("ERROR", "Please select at least one output type.");
+            return;
+        }
+
+        var position_file_path = selectedPositionFile.path + "/" + selectedPositionFile.filename;
+        var bom_file_path = selectedBomFile.path + "/" + selectedBomFile.filename;
+        itemConverter.outputPath = selectedDestPath;
+        if (selectedDestPath.length == 0) {
+            rootApp.showSystemMessage ("ERROR", "Please select the output path.");
+            return;
+        }
+        if ((selectedPositionFile.filename.length === 0) && (selectedBomFile.filename.length === 0)) {
+            rootApp.showSystemMessage ("ERROR", "Please select a position file\nor a BOM file or both.");
+            return;
+        }
+
+        rootApp.showBusy (true);
+        if (selectedPositionFile.filename.length > 0) {
+            if (!itemConverter.convertPositionFile (position_file_path)) {
+                rootApp.showBusy (false);
+                return;
+            }
+        }
+        if (selectedBomFile.filename.length > 0) {
+            if (!itemConverter.convertBomFile (bom_file_path)) {
+                rootApp.showBusy (false);
+                return;
+            }
+        }
+        rootApp.showBusy (false);
+        rootApp.showSystemMessage ("INFO", "Conversion success.");
     }
 
     //==========================================================================
@@ -121,6 +179,7 @@ Page {
                     anchors.verticalCenter: parent.verticalCenter
                     text: qsTr ("Select")
                     onClicked: {
+                        dialogSelectSource.title = qsTr ("Please select position file.");
                         dialogSelectSource.folder = rootApp.currentPath;
                         dialogSelectSource.nameFilters = ["CSV files (*.csv)", "All files (*)"];
                         dialogSelectSource.open (rootPage, "selectedPositionFile");
@@ -159,6 +218,7 @@ Page {
                     anchors.verticalCenter: parent.verticalCenter
                     text: qsTr ("Select")
                     onClicked: {
+                        dialogSelectSource.title = qsTr ("Please select BOM file.");
                         dialogSelectSource.folder = rootApp.currentPath;
                         dialogSelectSource.nameFilters = ["CSV files (*.csv)", "All files (*)"];
                         dialogSelectSource.open (rootPage, "selectedBomFile");
@@ -205,40 +265,63 @@ Page {
             HorizontalLine {
             }
 
-            // Convert
-            Button {
+            // Output types
+            Item {
+                anchors.left: parent.left
                 anchors.right: parent.right
-                text: qsTr ("Convert")
-                onClicked: {
-                    var position_file_path = selectedPositionFile.path + "/" + selectedPositionFile.filename;
-                    var bom_file_path = selectedBomFile.path + "/" + selectedBomFile.filename;
-                    itemConverter.outputPath = selectedDestPath;
-                    if (selectedDestPath.length == 0) {
-                        rootApp.showSystemMessage ("ERROR", "Please select the output path.");
-                        return;
-                    }
-                    if ((selectedPositionFile.filename.length === 0) && (selectedBomFile.filename.length === 0)) {
-                        rootApp.showSystemMessage ("ERROR", "Please select a position file\nor a BOM file or both.");
-                        return;
-                    }
+                height: 50
+                Row {
+                    anchors.top: parent.top
+                    anchors.bottom: parent.bottom
 
-                    rootApp.showBusy (true);
-                    if (selectedPositionFile.filename.length > 0) {
-                        if (!itemConverter.convertPositionFile (position_file_path)) {
-                            rootApp.showBusy (false);
-                            return;
+                    LabeledText {
+                        anchors.verticalCenter: parent.verticalCenter
+                        labelText: qsTr ("Output type:")
+                        text: " "
+                    }
+                    CheckBox {
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: "JLC"
+                        checked: rootPage.selectedJlc
+                        onClicked: {
+                            rootPage.selectedJlc = checked;
                         }
                     }
-                    if (selectedBomFile.filename.length > 0) {
-                        if (!itemConverter.convertBomFile (bom_file_path)) {
-                            rootApp.showBusy (false);
-                            return;
-                        }
-                    }
-                    rootApp.showBusy (false);
-                    rootApp.showSystemMessage ("INFO", "Conversion success.");
                 }
             }
+
+            HorizontalLine {
+            }
+
+            // Buttons
+            Item {
+                anchors.left: parent.left
+                anchors.right: parent.right
+                height: 50
+
+                Row {
+                    anchors.top: parent.top
+                    anchors.bottom: parent.bottom
+                    anchors.right: parent.right
+                    spacing: 10
+
+                    Button {
+                        text: qsTr ("Clear selection")
+                        onClicked: {
+                            rootPage.clearSelection();
+                        }
+                    }
+
+                    Button {
+                        text: qsTr ("Convert")
+                        onClicked: {
+                            rootPage.doConversion();
+                        }
+                    }
+
+                }
+            }
+
 
             HorizontalLine {
             }
@@ -303,6 +386,10 @@ Page {
                             "filename": itemFileInfo.fileName (aPath)};
                     }
                 }
+                if (rootPage.selectedDestPath.length == 0) {
+                    updateDestPath (itemFileInfo.path (aPath));
+                }
+
                 rootApp.currentPath = itemFileInfo.path (aPath);
             }
         }
@@ -342,16 +429,8 @@ Page {
         function onFileSelected (aPath) {
             console.log ("Selected " + aPath);
             if (aPath.length > 0) {
-                rootPage.selectedDestPath = aPath;
                 rootApp.currentPath = aPath;
-                if (aPath.length > 40) {
-                    rootPage.selectedDestPathTrimmed = "..." + aPath.substring (aPath.length - 40, aPath.length);
-                }
-                else {
-                    rootPage.selectedDestPathTrimmed = aPath
-                }
-
-
+                updateDestPath (aPath);
             }
         }
 
@@ -384,6 +463,8 @@ Page {
         rootApp.appendMessageToLog (objectName + " created. ");
 
         itemDelayFunc.forceSet(1000, rootPage.updateDatabaseStatus);
+        rootPage.clearSelection();
+
     }
 
     Component.onDestruction: {
