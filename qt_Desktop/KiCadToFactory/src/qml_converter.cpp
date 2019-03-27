@@ -445,14 +445,15 @@ int CKiCadConverter::convPositionForJlc (QFile *aInputFile, int aInputLineCount,
             rotation += 180;
         }
         if ((str_type.compare ("TRX") == 0) ||  (str_type.compare ("MOSFET") == 0)) {
-            if (str_side.compare("B") == 0) {
+            if (str_side.compare("T") == 0) {
                 rotation += 180;
             }
         }
 
-
         if (str_type.compare ("RESxN") == 0) {
-            rotation += 270;
+            if (str_side.compare("B") == 0) {
+                rotation += 180;
+            }
         }
 
         if (rotation >= 360)
