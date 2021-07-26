@@ -383,7 +383,7 @@ int CKiCadConverter::checkFile (QFile *aInputFile, char aSeparator, int aFieldCo
 int CKiCadConverter::convPositionForJlc (QFile *aInputFile, int aInputLineCount, QFile *aOutputFile) {
     int ret = 0;
     int line_count = 0;
-    char line_buf[256];
+    char line_buf[2048];
     QString str_output;
 
     if ((!aInputFile->isOpen()) || (!aOutputFile->isOpen())) {
@@ -476,7 +476,7 @@ int CKiCadConverter::convPositionForJlc (QFile *aInputFile, int aInputLineCount,
 int CKiCadConverter::convBomForJlc (QFile *aInputFile, int aInputLineCount, QFile *aOutputFile) {
     int ret = 0;
     int line_count = 0;
-    char line_buf[256];
+    char line_buf[2048];
     QString str_output;
     struct TPartInfo part_info;
 
@@ -547,11 +547,11 @@ int CKiCadConverter::convBomForJlc (QFile *aInputFile, int aInputLineCount, QFil
             str_type = part_info.type;
             str_package = part_info.package;
             str_part_number = part_info.partNumber;
-            str_pad_count.sprintf ("%d", part_info.padCount);
+            str_pad_count = QString::asprintf ("%d", part_info.padCount);
         }
 
         // Write output
-        str_output = QString ("%1,%2,\"%3\",\"%4\",%5,%6,%7,%8")
+        str_output = QString ("\"%1\",%2,\"%3\",\"%4\",%5,%6,%7,%8")
                         .arg (str_comment).arg(str_type).arg(str_ref).arg(str_package)
                         .arg(str_lib_ref).arg(str_pad_count).arg(quantity).arg(str_part_number);
         str_output.append (STRING_LINE_FEED);
@@ -744,7 +744,7 @@ void CKiCadConverter::lookupCapacitor (struct TPartInfo *aPartInfo, QString aSea
         if (f < 1) {
             // uF to nF
             f *= 1000;
-            str_value.sprintf ("%.0fn", f);
+            str_value = QString::asprintf ("%.0fn", f);
         }
     }
     else if (str_value.endsWith ('n')) {
@@ -752,12 +752,12 @@ void CKiCadConverter::lookupCapacitor (struct TPartInfo *aPartInfo, QString aSea
         if (f < 1) {
             // nF to pF
             f *= 1000;
-            str_value.sprintf ("%.0fp", f);
+            str_value = QString::asprintf ("%.0fp", f);
         }
         else if (f >= 1000) {
             // nF to uF
             f /= 1000;
-            str_value.sprintf ("%.0fu", f);
+            str_value = QString::asprintf ("%.0fu", f);
         }
     }
     else if (str_value.endsWith ('p')) {
@@ -765,7 +765,7 @@ void CKiCadConverter::lookupCapacitor (struct TPartInfo *aPartInfo, QString aSea
         if (f >= 1000) {
             // pF to nF
             f /= 1000;
-            str_value.sprintf ("%.0fn", f);
+            str_value = QString::asprintf ("%.0fn", f);
         }
     }
 
@@ -837,7 +837,7 @@ void CKiCadConverter::lookupResister (struct TPartInfo *aPartInfo, QString aSear
         str_value.chop(1);
 
     // Correct nkn
-    if (((str_value.at(1) == 'k') || (str_value.at(1) == 'K')) && (str_value.length() > 2)) {
+    if ((str_value.length() > 2) && ((str_value.at(1) == 'k') || (str_value.at(1) == 'K'))) {
         str_value.replace ("k", ".");
         str_value.append ("k");
     }

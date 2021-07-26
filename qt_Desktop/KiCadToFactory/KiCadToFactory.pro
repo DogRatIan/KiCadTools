@@ -1,4 +1,4 @@
-QT += quick serialport sql charts
+QT += quick sql charts
 CONFIG += c++11
 
 # The following define makes your compiler emit warnings if you use
@@ -35,19 +35,21 @@ SOURCES += \
     src/qml_converter.cpp \
     src/qml_fileinfo.cpp \
     src/qml_part_list.cpp \
-    src/qml_config.cpp
+    src/qml_config.cpp \
+    src/qml_sysutil.cpp
 
 HEADERS += \
     src/debug.h \
     src/qml_converter.h \
     src/qml_fileinfo.h \
     src/qml_part_list.h \
-    src/qml_config.h
+    src/qml_config.h \
+    src/qml_sysutil.h
 
-INCLUDEPATH += ..\SharedLibrary\release
+INCLUDEPATH += ../SharedLibrary/release
 
 win32: LIBS+= -L$$PWD/../SharedLibrary/release -lShared_mingw_32
-
+unix: LIBS+= -lsqlite3
 
 # Application icon for win32
 RC_ICONS = assets/app_icon.ico

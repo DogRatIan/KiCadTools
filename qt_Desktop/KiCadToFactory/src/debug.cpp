@@ -55,7 +55,7 @@ void DebugPrintf (const char *aMsg, ...) {
 
     va_list args;
     va_start (args, aMsg);
-    str.vsprintf(aMsg, args);
+    str = QString::vasprintf(aMsg, args);
     va_end (args);
     str.insert(0, "[DEBUG]");
     qDebug () << str;

@@ -2,6 +2,7 @@ import QtQuick 2.11
 import QtQuick.Controls 2.4
 
 import com.dogratian.qml.Config 1.0
+import com.dogratian.qml.SysUtil 1.0
 import com.dogratian.qml.FileInfo 1.0
 import com.dogratian.qml.PartList 1.0
 import com.dogratian.qml.KiCadConverter 1.0
@@ -145,6 +146,10 @@ ApplicationWindow {
         onErrorMessage: {
             rootApp.showSystemMessage (qsTr ("ERROR"), aMessage);
         }
+    }
+
+    SysUtil {
+        id: itemSysUtil
     }
 
     FileInfo {
